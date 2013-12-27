@@ -5,7 +5,10 @@
 #include "w10_pc_user.h"
 #include "MainProcFunc.h"
 #include "Commctrl.h"
+#include "Commdlg.h"
+#include "UpdateGWatch.h"
 
+HINSTANCE g_hInst = NULL;
 HWND g_hdlg = NULL;
 HWND g_hdlg_bt_init = NULL;
 CRITICAL_SECTION main_cs;
@@ -18,6 +21,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
                      LPTSTR    lpCmdLine,
                      int       nCmdShow)
 {
+	g_hInst = hInstance;
 	InitializeCriticalSection(&main_cs);
 	dmsg(L"IDD_BT_INIT");
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_BT_INIT), NULL, dlgBtInit);
@@ -29,7 +33,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 }
 
 
-
+void StopThread(unsigned char x);
 INT_PTR CALLBACK dlgMainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER(lParam);
@@ -56,7 +60,8 @@ INT_PTR CALLBACK dlgMainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		switch(LOWORD(wParam)) {
 			case IDOK:
 			case IDCANCEL:
-				StopSync();
+				//StopSync();
+				CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)StopThread, (LPVOID)0, 0, NULL);
 				EndDialog(hDlg, LOWORD(wParam));
 				return TRUE;
 
@@ -65,9 +70,35 @@ INT_PTR CALLBACK dlgMainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)doSync, NULL, 0, NULL);
 				return TRUE;
 
-			case IDC_STOP:
+			case IDC_STOP_SYNC:
+				/*
 				StopSync();
 				Refresh();
+				*/
+				CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)StopThread, (LPVOID)1, 0, NULL);
+				return TRUE;
+
+			case IDC_UPDATE:
+				{
+					OPENFILENAME file;
+					memset(&file, 0, sizeof(OPENFILENAME));
+					file.lStructSize = sizeof(OPENFILENAME);
+					file.hwndOwner = hDlg;
+					file.hInstance = g_hInst;
+					file.lpstrFilter = L"All Files\0*\0BIN Files\0*.bin\0";
+					TCHAR szFileName[MAX_PATH+1] = {0};
+					file.lpstrFile = szFileName;
+					file.nMaxFile = MAX_PATH;
+					file.nFilterIndex = 2;		//	this is an 1-based index
+					if( ! GetOpenFileName(&file)) {
+						wsprintf(msg, L"ERROR(%d>>%d)", GetLastError(), CommDlgExtendedError());
+						dmsg(msg);
+					} else {
+						wsprintf(msg, L"%s", file.lpstrFile);
+						dmsg(msg);
+						CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)doUpdate, (LPVOID)szFileName, 0, NULL);
+					}
+				}
 				return TRUE;
 
 			default:
@@ -117,6 +148,17 @@ INT_PTR CALLBACK dlgBtInit(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam
 			break;
 	}
 	return FALSE;
+}
+
+void StopThread(unsigned char x) {
+	StopSync();
+	if(x) {
+		//Refresh();
+		PostMessage(g_hdlg, WM_UI_REFRESH, 0, 0);
+	} else {
+		wsprintf(msg, L"StopThread()::Do NOT Refresh!");
+		dmsg(msg);
+	}
 }
 
 

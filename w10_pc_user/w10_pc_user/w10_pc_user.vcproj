@@ -133,7 +133,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\Cosmos.exe"
+				OutputFile="$(OutDir)\GoldtekConnectApplication.exe"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -213,7 +213,15 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\UpdateGWatch.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\w10_pc_user.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\modem\ymodem.cpp"
 				>
 			</File>
 			<File
@@ -239,6 +247,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\EnvSettings.h"
+				>
+			</File>
+			<File
 				RelativePath=".\MainProcFunc.h"
 				>
 			</File>
@@ -259,7 +271,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\UpdateGWatch.h"
+				>
+			</File>
+			<File
 				RelativePath=".\w10_pc_user.h"
+				>
+			</File>
+			<File
+				RelativePath=".\modem\ymodem.h"
 				>
 			</File>
 		</Filter>

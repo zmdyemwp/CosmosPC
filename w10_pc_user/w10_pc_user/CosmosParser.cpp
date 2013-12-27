@@ -2,10 +2,9 @@
 #include "MainProcFunc.h"
 #include "stdio.h"
 
+#include "EnvSettings.h"
 #include "Storage.h"
 
-
-//#define		__DIRECTLY_SQL__
 #ifdef		__DIRECTLY_SQL__
 #include "zlb_mysql.h"
 #pragma comment(lib, "libmysql.lib")
@@ -19,8 +18,6 @@ void writeSQL(char * sql) {
 }
 #endif		//__DIRECTLY_SQL__
 
-
-static TCHAR msg[512] = {0};
 
 void doParseFile(DWORD i) {
 	wsprintf(msg, L"\tdoParseFile(%d)", i);
@@ -160,4 +157,6 @@ void doParseFile(DWORD i) {
 
 	CloseHandle(hfile);
 	CloseHandle(hdestfile);
+	wsprintf(msg, L"doParseFile(%d)::End of Thread", i);
+	dmsg(msg);
 }

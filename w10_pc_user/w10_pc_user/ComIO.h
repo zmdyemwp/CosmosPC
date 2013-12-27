@@ -11,7 +11,7 @@ class ComIO {
 		void InitCS();
 		ComIO(DWORD com);
 		ComIO(TCHAR* com);
-		BOOL InitComIO(void);
+		BOOL InitComIO(BOOL bSingle = FALSE);
 		BOOL DeinitComIO(void);
 		DWORD ReadCom(char*, DWORD);
 		DWORD WriteCom(char*, DWORD);

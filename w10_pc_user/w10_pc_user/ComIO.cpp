@@ -34,7 +34,7 @@ ComIO::ComIO(TCHAR* com) {
 	wsprintf(szDevName, L"%s", com);
 }
 
-BOOL ComIO::InitComIO(void) {
+BOOL ComIO::InitComIO(BOOL bSingle) {
 	BOOL result = TRUE;
 	//	Open comm port and initialize it to 8-n-1
 	hCom = CreateFile(szDevName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -46,8 +46,18 @@ BOOL ComIO::InitComIO(void) {
 	dcb.fParity = FALSE;
 	dcb.StopBits = ONESTOPBIT;
 	SetCommState(hCom, &dcb);
+	//	set comm mask
+	SetCommMask(hCom, EV_BREAK | EV_ERR | EV_RXCHAR);
+	//	set comm timeout
+	COMMTIMEOUTS timeout;
+	timeout.ReadIntervalTimeout = 5;
+	timeout.ReadTotalTimeoutConstant = 100;
+	timeout.ReadTotalTimeoutMultiplier = 0;
+	SetCommTimeouts(hCom, &timeout);
 	//	Initialize the reading thread
-	hReadThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ComIO::ReadThread, this, 0, NULL);
+	if( ! bSingle) {
+		hReadThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ComIO::ReadThread, this, 0, NULL);
+	}
 	return result;
 }
 
@@ -63,22 +73,34 @@ BOOL ComIO::DeinitComIO(void) {
 
 DWORD ComIO::ReadCom(char* buffer, DWORD size) {
 	//	Read data from comm port to buffer
-	EnterCriticalSection(&cs);
 	DWORD read = 0;
-	ReadFile(hCom, buffer, size, &read, NULL);
+	EnterCriticalSection(&cs);
+	if(NULL != hCom) {
+		ReadFile(hCom, buffer, size, &read, NULL);
+	}
 	LeaveCriticalSection(&cs);
 	return read;
 }
 
 DWORD ComIO::WriteCom(char* buffer, DWORD size) {
 	//	Write data to comm port
-	EnterCriticalSection(&cs);
 	DWORD write = 0;
-	WriteFile(hCom, buffer, size, &write, NULL);
-	TCHAR temp[1024] = {0};
-	for(DWORD i = 0; i < write; i++) {
-		wsprintf(temp, L"ComIO::WriteCom::%02x", (unsigned char)buffer[i]);
-		dmsg(temp, 0);
+	EnterCriticalSection(&cs);
+	if(NULL != hCom) {
+		if( ! WriteFile(hCom, buffer, size, &write, NULL)) {
+			wsprintf(msg, L"Error(%d)\r\n", GetLastError());
+			dmsg(msg);
+		}
+		{
+			buffer[size] = '\0';
+			wsprintf(msg, L"<%S>(%d)", buffer, write);
+			dmsg(msg);
+		}
+		TCHAR temp[1024] = {0};
+		for(DWORD i = 0; i < write; i++) {
+			wsprintf(temp, L"ComIO::WriteCom::%02x", (unsigned char)buffer[i]);
+			dmsg(temp, 0);
+		}
 	}
 	LeaveCriticalSection(&cs);
 	return write;
@@ -88,6 +110,7 @@ void ComIO::cmdEngine(TCHAR* cmd, DWORD len) {
 }
 
 void ComIO::SendAck() {
+	return;
 	if(0 < strlen((char*)ack)) {
 		WriteCom((char*)ack, strlen((char*)ack));
 	}
@@ -96,14 +119,6 @@ void ComIO::SendAck() {
 void readThreadBackup();
 void ComIO::ReadThread(ComIO* pobj) {
 	ComIO & obj = *pobj;
-	//	set comm mask
-	SetCommMask(obj.getHandle(), EV_BREAK | EV_ERR | EV_RXCHAR);
-	//	set comm timeout
-	COMMTIMEOUTS timeout;
-	timeout.ReadIntervalTimeout = 5;
-	timeout.ReadTotalTimeoutConstant = 100;
-	timeout.ReadTotalTimeoutMultiplier = 0;
-	SetCommTimeouts(obj.getHandle(), &timeout);
 	//	reading thread
 	DWORD events = 0;
 	const DWORD buflen = 1024;
@@ -113,7 +128,7 @@ void ComIO::ReadThread(ComIO* pobj) {
 	while(obj.getHandle()) {
 		read = obj.ReadCom((char*)buf, buflen);
 		if(read) {
-			obj.SendAck();
+			//obj.SendAck();
 			if(NULL != obj.proc) {
 				obj.proc((char*)buf, read);
 			} else if(NULL != obj.objproc) {

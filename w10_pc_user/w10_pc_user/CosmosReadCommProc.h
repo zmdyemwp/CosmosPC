@@ -18,6 +18,7 @@ class CosmosReadCommProc:public ReadCommProc {
 		void DeleteLastFile(void);
 		void proc(char*,DWORD);
 		DWORD flag;		//	{0, 1, 2, 3 | 0: before request; 1: before writing; 2: writing; 3: finish writing}
+		DWORD dwName;
 	protected:
 		TCHAR szLastFile[512];
 		HANDLE hfile;
